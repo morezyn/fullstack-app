@@ -1,0 +1,130 @@
+DEPLOYMENT INSTRUCTIONS
+=======================
+Full-Stack App: Backend (Render) + Frontend (Netlify)
+
+
+PREREQUISITES
+-------------
+- GitHub account with this repo pushed to a public/private repo
+- Render account (render.com) — free tier
+- Netlify account (netlify.com) — free tier
+- Flagsmith account (flagsmith.com) — free tier (for canary/feature flags)
+
+
+STEP 1: RENDER — DEPLOY BACKEND
+--------------------------------
+1. Log in to dashboard.render.com
+2. Click "New +" > "Blueprint" (uses render.yaml)
+   OR "New +" > "Web Service"
+3. If using Web Service (manual):
+   a. Connect your GitHub repo
+   b. Name: `fullstack-backend`
+   c. Root Directory: `backend`
+   d. Runtime: Node
+   e. Build Command: `npm ci`
+   f. Start Command: `npm start`
+   g. Instance Type: Free
+   h. Add Environment Variable:
+        Key: FLAGSMITH_ENVIRONMENT_KEY
+        Value: <your-flagsmith-key>   (see Step 4)
+4. Click "Create Web Service"
+5. Once deployed, copy the URL (e.g., https://fullstack-backend.onrender.com)
+6. Open a "Deploy Hook" in Render:
+   Dashboard > Your Service > Settings > Deploy Hooks > "Create Hook"
+   Copy the generated URL — you'll need it for GitHub Actions.
+7. Verify: https://YOUR-APP.onrender.com/api/health
+   Expected: {"status":"ok","timestamp":"..."}
+
+
+STEP 2: NETLIFY — DEPLOY FRONTEND
+----------------------------------
+1. Log in to app.netlify.com
+2. Click "Add new site" > "Import an existing project"
+3. Connect your GitHub repo
+4. Configure:
+   - Base directory: `frontend`
+   - Build command: `npm run build`
+   - Publish directory: `frontend/dist`
+5. Click "Deploy site"
+6. In Site settings > "Environment variables", add:
+        Key: VITE_API_URL
+        Value: https://YOUR-APP.onrender.com   (from Step 1)
+7. Go to Site settings > "General" > copy "Site ID"
+8. Generate an auth token:
+   User settings (top-right avatar) > "Personal access tokens" > "New token"
+   Copy the token.
+9. The site auto-deploys on git push. The URL is shown on the site overview page.
+
+
+STEP 3: FLAGSMITH — FEATURE FLAGS FOR CANARY RELEASES
+------------------------------------------------------
+1. Log in to app.flagsmith.com
+2. Create a project (e.g., "FullStack App")
+3. Create an "Environment" (default: "Development")
+4. Copy the "Server-side Environment Key"
+5. Add it to Render's environment variables as `FLAGSMITH_ENVIRONMENT_KEY`
+6. Create a feature flag:
+   - Name: `new-data-endpoint`
+   - Type: "Standard"
+   - Initial value: OFF
+7. For canary releases, use the "Percentage rollout" option:
+   - Start at 0% → 10% → 50% → 100%
+   - Toggle in the Flagsmith dashboard while monitoring errors
+
+
+STEP 4: GITHUB ACTIONS — CI/CD SECRETS
+---------------------------------------
+Add these secrets in your GitHub repo:
+  Settings > Secrets and variables > Actions > "New repository secret"
+
+| Secret                   | Value                                                      |
+|--------------------------|------------------------------------------------------------|
+| RENDER_DEPLOY_HOOK       | The deploy hook URL from Render (Step 1.6)                 |
+| NETLIFY_AUTH_TOKEN       | Personal access token from Netlify (Step 2.8)              |
+| NETLIFY_SITE_ID          | Site ID from Netlify (Step 2.7)                            |
+| STAGING_API_URL          | Render app URL (e.g., https://fullstack-backend.onrender.com) |
+
+
+STEP 5: TRIGGER THE PIPELINE
+-----------------------------
+1. Commit and push to `main` branch:
+   git add .
+   git commit -m "Initial commit"
+   git push origin main
+
+2. Watch the pipeline at:
+   GitHub > Your Repo > Actions > "CI/CD Pipeline"
+
+3. The workflow runs these jobs in order:
+   test → postman-tests → deploy-backend + deploy-frontend
+
+
+STEP 6: VERIFY DEPLOYMENT
+--------------------------
+- Backend health:  curl https://YOUR-APP.onrender.com/api/health
+- Backend data:    curl https://YOUR-APP.onrender.com/api/v1/data
+- Frontend:        https://YOUR-SITE.netlify.app
+  (Should show health status and data from the backend)
+
+Postman tests ran in CI via newman — check the "postman-tests" job logs.
+
+
+CANARY RELEASE WORKFLOW (HOMEWORK)
+-----------------------------------
+1. Push a new feature behind the `new-data-endpoint` flag
+2. Render's deploy hook triggers a production deploy
+3. The feature is OFF by default in Flagsmith — no user sees it
+4. In Flagsmith dashboard, set rollout to 10%
+5. Monitor logs/errors (check Render dashboard > Logs)
+6. Increase to 50%, then 100%
+7. If issues arise, toggle back to 0% immediately in Flagsmith
+
+
+FILES REFERENCE
+---------------
+.github/workflows/deploy.yml      — CI/CD pipeline configuration
+backend/                          — Express.js API server
+frontend/                         — Vite + React client
+postman/collection.json           — API tests (run via newman in CI)
+render.yaml                       — Render Blueprint (infra as code)
+netlify.toml                      — Netlify build & redirect config
