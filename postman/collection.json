@@ -1,0 +1,123 @@
+{
+  "info": {
+    "name": "Full-Stack App API Tests",
+    "schema": "https://schema.postman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "api_url",
+      "value": "http://localhost:4000"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has status ok', () => {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body).to.have.property('status', 'ok');",
+              "});",
+              "",
+              "pm.test('Response has valid timestamp', () => {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body).to.have.property('timestamp');",
+              "  pm.expect(new Date(body.timestamp).toISOString()).to.eql(body.timestamp);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{api_url}}/api/health",
+          "host": ["{{api_url}}"],
+          "path": ["api", "health"]
+        }
+      }
+    },
+    {
+      "name": "V1 Data (Unflagged)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', () => {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Returns an array of items', () => {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body).to.be.an('array');",
+              "  pm.expect(body.length).to.be.at.least(1);",
+              "  pm.expect(body[0]).to.have.property('name');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{api_url}}/api/v1/data",
+          "host": ["{{api_url}}"],
+          "path": ["api", "v1", "data"]
+        }
+      }
+    },
+    {
+      "name": "V2 Data (Feature-Flagged)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const acceptStatuses = [200, 404];",
+              "",
+              "pm.test('Status code is 200 or 404', () => {",
+              "  pm.expect(acceptStatuses).to.include(pm.response.code);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "  pm.test('Returns enhanced items when flag is ON', () => {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.be.an('array');",
+              "    pm.expect(body[0]).to.have.property('version', 2);",
+              "    pm.expect(body[0]).to.have.property('description');",
+              "  });",
+              "}",
+              "",
+              "if (pm.response.code === 404) {",
+              "  pm.test('Returns error when flag is OFF', () => {",
+              "    const body = pm.response.json();",
+              "    pm.expect(body).to.have.property('error', 'Not available');",
+              "    pm.expect(body).to.have.property('feature', 'new-data-endpoint');",
+              "  });",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{api_url}}/api/data",
+          "host": ["{{api_url}}"],
+          "path": ["api", "data"]
+        }
+      }
+    }
+  ]
+}

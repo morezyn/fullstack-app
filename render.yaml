@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: fullstack-backend
+    runtime: node
+    repo: https://github.com/YOUR_USER/YOUR_REPO
+    buildCommand: cd backend && npm ci
+    startCommand: cd backend && npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 18
+      - key: FLAGSMITH_ENVIRONMENT_KEY
+        sync: false
+    previews:
+      generation: automatic
