@@ -7,7 +7,8 @@ function DataDisplay({ apiUrl }) {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`${apiUrl}/api/${version}/data`)
+    const path = version === 'v2' ? 'api/data' : `api/${version}/data`;
+    fetch(`${apiUrl}/${path}`)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
@@ -24,7 +25,7 @@ function DataDisplay({ apiUrl }) {
         <button onClick={() => setVersion('v1')} disabled={version === 'v1'}>
           v1 (Basic)
         </button>
-        <button onClick={() => setVersion('')} disabled={version === ''}>
+        <button onClick={() => setVersion('v2')} disabled={version === 'v2'}>
           v2 (Feature-Flagged)
         </button>
       </div>
